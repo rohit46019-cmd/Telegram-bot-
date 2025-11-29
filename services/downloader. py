@@ -1,0 +1,24 @@
+# Two download paths:
+# 1) Website downloads via yt-dlp (used in /dl).
+# 2) Telegram message downloads via user session (extend with Pyrogram).
+import os
+import yt_dlp
+from typing import Callable, Tuple, Dict
+from services.storage import file_path
+
+def download_website(url: str, progress_cb: Callable[[Dict], None]) -> Tuple[str, Dict]:
+    ydl_opts = {
+        "outtmpl": file_path("%(title)s.%(ext)s"),
+        "progress_hooks": [progress_cb],
+        "quiet": True,
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+        path = ydl.prepare_filename(info)
+    return path, info
+
+# TODO: implement Telegram media download via Pyrogram (user must have access)
+async def download_telegram_message(user_id: int, chat_ref: str, msg_id: int, progress_cb):
+    # Use Pyrogram Client to get_messages(chat_ref, msg_id) and download_media(..., progress=...)
+    # Report progress_cb({ 'status': 'downloading', 'downloaded_bytes': x, 'total_bytes': y, 'speed': s, 'eta': e })
+    raise NotImplementedError("Implement with Pyrogram client when ready.")
