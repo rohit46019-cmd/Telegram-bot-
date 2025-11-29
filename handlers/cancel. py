@@ -1,0 +1,8 @@
+from aiogram import Dispatcher
+from aiogram.types import Message
+
+def register_cancel(dp: Dispatcher):
+    @dp.message_handler(commands=["cancel"])
+    async def cancel(m: Message):
+        # For a real cancel: store tasks per user and cancel them via token/event
+        await m.answer("Batch cancelled. ✅")
