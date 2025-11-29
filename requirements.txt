@@ -2,6 +2,6 @@ aiogram==2.25.1
 fastapi==0.115.2
 uvicorn[standard]==0.32.0
 pyrogram==2.0.106
-tgcrypto==1.2.5
+tgcrypto==1.2.5   # has wheels, avoid forcing source build
 yt-dlp==2024.10.22
 pydantic==2.6.4
