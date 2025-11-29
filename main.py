@@ -27,14 +27,31 @@ register_settings(dp)
 # Health-check server for Render
 app = FastAPI()
 
+
 @app.get("/")
 def read_root():
     return {"status": "ok", "message": "Bot is running"}
 
-async def runner():
-    loop = asyncio.get_event_loop()
-    loop.create_task(dp.start_polling())
+
+async def start_bot():
+    """Start Aiogram bot polling."""
+    await dp.start_polling()
+
+
+def start_fastapi():
+    """Start FastAPI server (runs in a separate thread)."""
     uvicorn.run(app, host="0.0.0.0", port=PORT)
+
+
+async def main():
+    # Run Aiogram bot inside event loop
+    bot_task = asyncio.create_task(start_bot())
+
+    # Run FastAPI server in a separate thread
+    api_task = asyncio.to_thread(start_fastapi)
+
+    await asyncio.gather(bot_task, api_task)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
