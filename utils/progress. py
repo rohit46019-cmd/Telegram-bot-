@@ -1,0 +1,38 @@
+def render_global_bar(done, total, speed, eta, current_link):
+    pct = (done / total) * 100 if total else 0
+    return f"""╭────────────────────────╮
+│   Batch Progress (Pinned)
+├────────────────────────
+│ Files: {done}/{total}
+│ Speed: {speed:.2f} MB/s
+│ ETA: {eta}s
+│ Current: {current_link}
+╰────────────────────────╯"""
+
+def render_dl_bar(done, total, speed, eta):
+    width = 10
+    pct = (done / total) if total else 0
+    fill = int(pct * width)
+    bar = "♦" * fill + "·" * (width - fill)
+    return f"""╭─────────────────────╮
+│ Downloading...
+├─────────────────────
+│ {bar}
+│ Completed: {done/1024/1024:.2f} MB/{total/1024/1024:.2f} MB
+│ Speed: {speed:.2f} MB/s
+│ ETA: {eta}s
+╰─────────────────────╯"""
+
+def render_ul_bar(done, total, speed, eta):
+    width = 10
+    pct = (done / total) if total else 0
+    fill = int(pct * width)
+    bar = "▓" * fill + "·" * (width - fill)
+    return f"""╭─────────────────────╮
+│ Uploading...
+├─────────────────────
+│ {bar}
+│ Completed: {done/1024/1024:.2f} MB/{total/1024/1024:.2f} MB
+│ Speed: {speed:.2f} MB/s
+│ ETA: {eta}s
+╰─────────────────────╯"""
