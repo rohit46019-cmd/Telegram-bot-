@@ -1,0 +1,21 @@
+import re
+from typing import Optional, Tuple
+
+# Supports:
+# https://t.me/c/<chat>/<msg_id>
+# https://t.me/<channel>/<msg_id>
+PATTERNS = [
+    re.compile(r"https?://t\.me/c/(?P<chat>-?\d+|\d+)/(?P<msg>\d+)"),
+    re.compile(r"https?://t\.me/(?P<channel>[A-Za-z0-9_]+)/(?P<msg>\d+)"),
+]
+
+def parse_link(text: str) -> Optional[Tuple[str, int]]:
+    if not text:
+        return None
+    for pat in PATTERNS:
+        m = pat.match(text.strip())
+        if m:
+            if "channel" in m.groupdict():
+                return (m.group("channel"), int(m.group("msg")))
+            return (m.group("chat"), int(m.group("msg")))
+    return None
