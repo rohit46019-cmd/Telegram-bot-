@@ -1,0 +1,22 @@
+from aiogram import Dispatcher
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+
+def settings_keyboard():
+    kb = InlineKeyboardMarkup(row_width=3)
+    kb.add(
+        InlineKeyboardButton("Set chat id", callback_data="set_chat"),
+        InlineKeyboardButton("Set rename tag", callback_data="set_rename"),
+        InlineKeyboardButton("Caption", callback_data="set_caption"),
+        InlineKeyboardButton("Replace word", callback_data="replace_word"),
+        InlineKeyboardButton("Remove word", callback_data="remove_word"),
+        InlineKeyboardButton("Reset", callback_data="reset"),
+        InlineKeyboardButton("Session login", callback_data="session_login"),
+        InlineKeyboardButton("Set thumbnail", callback_data="set_thumb"),
+        InlineKeyboardButton("Upload method", callback_data="upload_method"),
+    )
+    return kb
+
+def register_settings(dp: Dispatcher):
+    @dp.message_handler(commands=["settings"])
+    async def settings(m: Message):
+        await m.answer("Settings:", reply_markup=settings_keyboard())
