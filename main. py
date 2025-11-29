@@ -1,0 +1,30 @@
+import asyncio
+import uvicorn
+from fastapi import FastAPI
+from aiogram import Bot, Dispatcher, types
+from config import BOT_TOKEN, PORT
+
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher(bot)
+
+# --- Bot handlers ---
+@dp.message_handler(commands=['start'])
+async def start(m: types.Message):
+    await m.answer("Bot is live 😊")
+
+# --- Health check server (Render fix) ---
+app = FastAPI()
+
+@app.get("/")
+def read_root():
+    return {"status": "ok", "message": "Bot is running"}
+
+async def main():
+    loop = asyncio.get_event_loop()
+    # Run bot polling in background
+    loop.create_task(dp.start_polling())
+    # Run FastAPI server
+    uvicorn.run(app, host="0.0.0.0", port=PORT)
+
+if __name__ == "__main__":
+    asyncio.run(main())
