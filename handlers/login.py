@@ -3,7 +3,7 @@ from aiogram.types import Message
 from config import API_ID, API_HASH, SESSION_PATH
 import os
 
-# Temporary state storage (simple dict for demo; replace with DB/Redis if scaling)
+# Temporary state storage
 _login_state = {}
 
 
@@ -20,7 +20,7 @@ def register_login(dp: Dispatcher):
 
     @dp.message_handler(lambda m: _login_state.get(m.from_user.id, {}).get("step") == "phone")
     async def handle_phone(m: Message):
-        # Import Pyrogram ONLY here, after event loop is ready
+        # Import Pyrogram here (after event loop exists)
         from pyrogram import Client
 
         uid = m.from_user.id
@@ -30,9 +30,15 @@ def register_login(dp: Dispatcher):
         client = Client(session_file, api_id=API_ID, api_hash=API_HASH)
         await client.connect()
 
+        # Send code and save phone_code_hash
         sent_code = await client.send_code(phone)
 
-        _login_state[uid].update({"step": "otp", "client": client, "phone": phone})
+        _login_state[uid].update({
+            "step": "otp",
+            "client": client,
+            "phone": phone,
+            "hash": sent_code.phone_code_hash  # <--- important!
+        })
         await m.answer("Enter the OTP you received 🔑")
 
     @dp.message_handler(lambda m: _login_state.get(m.from_user.id, {}).get("step") == "otp")
@@ -41,9 +47,10 @@ def register_login(dp: Dispatcher):
         otp = m.text.strip()
         client = _login_state[uid]["client"]
         phone = _login_state[uid]["phone"]
+        phone_hash = _login_state[uid]["hash"]
 
         try:
-            await client.sign_in(phone, otp)
+            await client.sign_in(phone_number=phone, phone_code_hash=phone_hash, phone_code=otp)
             _login_state[uid] = {"step": "done"}
             await m.answer("Login successful ✅")
         except Exception as e:
@@ -55,7 +62,6 @@ def register_login(dp: Dispatcher):
 
         # Clean up session files
         session_file = os.path.join(SESSION_PATH, str(uid))
-
         for suffix in ["", ".session", ".session-journal"]:
             path = session_file + suffix
             if os.path.exists(path):
