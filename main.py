@@ -1,4 +1,11 @@
 import asyncio
+import uvloop
+
+# --- REQUIRED FIX FOR PYROGRAM + UVLOOP ---
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
+# -----------------------------------------
 import uvicorn
 from fastapi import FastAPI
 from aiogram import Bot, Dispatcher
