@@ -2,8 +2,9 @@ from aiogram import Dispatcher
 from aiogram.types import Message
 from config import API_ID, API_HASH, SESSION_PATH
 import os
+from services.auth import set_logged_in  # Import global login flag
 
-# Temporary state storage (simple dict; replace with DB/Redis if scaling)
+# Temporary per-step state (memory dict)
 _login_state = {}
 
 
@@ -21,7 +22,7 @@ def register_login(dp: Dispatcher):
     @dp.message_handler(lambda m: _login_state.get(m.from_user.id, {}).get("step") == "phone")
     async def handle_phone(m: Message):
         from pyrogram import Client
-        from pyrogram.errors import PhoneCodeInvalid, PhoneCodeExpired, SessionPasswordNeeded
+        from pyrogram.errors import PhoneCodeInvalid, PhoneCodeExpired
 
         uid = m.from_user.id
         phone = m.text.strip()
@@ -43,7 +44,6 @@ def register_login(dp: Dispatcher):
             "phone": phone,
             "hash": sent_code.phone_code_hash
         })
-
         await m.answer("Enter the OTP you received 🔑")
 
     @dp.message_handler(lambda m: _login_state.get(m.from_user.id, {}).get("step") == "otp")
@@ -58,10 +58,11 @@ def register_login(dp: Dispatcher):
 
         try:
             await client.sign_in(phone_number=phone, phone_code_hash=phone_hash, phone_code=otp)
+            # Mark user as logged in globally
+            set_logged_in(uid, True)
             _login_state[uid] = {"step": "done"}
             await m.answer("Login successful ✅")
         except SessionPasswordNeeded:
-            # 2FA required
             _login_state[uid]["step"] = "2fa"
             await m.answer("This account has 2FA enabled 🔐\nPlease send your password:")
         except (PhoneCodeInvalid, PhoneCodeExpired) as e:
@@ -79,6 +80,8 @@ def register_login(dp: Dispatcher):
 
         try:
             await client.check_password(password)
+            # Mark user as logged in globally
+            set_logged_in(uid, True)
             _login_state[uid] = {"step": "done"}
             await m.answer("Login successful ✅")
         except PasswordHashInvalid:
@@ -98,4 +101,5 @@ def register_login(dp: Dispatcher):
                 os.remove(path)
 
         _login_state.pop(uid, None)
+        set_logged_in(uid, False)  # Reset global login flag
         await m.answer("Logged out ✅\nYour session files have been removed.")
