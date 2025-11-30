@@ -1,24 +1,57 @@
 from aiogram import Dispatcher
 from aiogram.types import Message
-from services.auth import is_logged_in, set_logged_in
+from pyrogram import Client
+from config import API_ID, API_HASH, SESSION_PATH
+import os
+
+# Temporary state storage (simple dict for demo; replace with DB/Redis if scaling)
+_login_state = {}
 
 def register_login(dp: Dispatcher):
     @dp.message_handler(commands=["login"])
     async def login(m: Message):
         uid = m.from_user.id
-        if is_logged_in(uid):
-            await m.answer("You are already logged in ✅")
-            return
-        # Simplified flow: emulate login success (replace with Pyrogram phone/OTP/2FA)
-        # Ask phone
+        session_file = os.path.join(SESSION_PATH, str(uid))
+
+        # Ask for phone number
+        _login_state[uid] = {"step": "phone", "session_file": session_file}
         await m.answer("Send your mobile 📲 number with country code (e.g., +91xxxxxxxxxx)")
-        # In real flow, capture next message, send_code, then ask for OTP and optional 2FA
-        # Here we mark as logged-in for demo:
-        set_logged_in(uid, True)
-        await m.answer("Login successful ✅")
+
+    @dp.message_handler(lambda m: _login_state.get(m.from_user.id, {}).get("step") == "phone")
+    async def handle_phone(m: Message):
+        uid = m.from_user.id
+        phone = m.text.strip()
+        session_file = _login_state[uid]["session_file"]
+
+        client = Client(session_file, api_id=API_ID, api_hash=API_HASH)
+        await client.connect()
+        sent_code = await client.send_code(phone)
+
+        _login_state[uid].update({"step": "otp", "client": client, "phone": phone})
+        await m.answer("Enter the OTP you received 🔑")
+
+    @dp.message_handler(lambda m: _login_state.get(m.from_user.id, {}).get("step") == "otp")
+    async def handle_otp(m: Message):
+        uid = m.from_user.id
+        otp = m.text.strip()
+        client = _login_state[uid]["client"]
+        phone = _login_state[uid]["phone"]
+
+        try:
+            await client.sign_in(phone, otp)
+            _login_state[uid] = {"step": "done"}
+            await m.answer("Login successful ✅")
+        except Exception as e:
+            await m.answer(f"Login failed ❌: {e}")
 
     @dp.message_handler(commands=["logout"])
     async def logout(m: Message):
         uid = m.from_user.id
-        set_logged_in(uid, False)
-        await m.answer("Logged out. Session cleared.")
+        # Clean up session file
+        session_file = os.path.join(SESSION_PATH, str(uid))
+        for suffix in ["", ".session", ".session-journal"]:
+            path = session_file + suffix
+            if os.path.exists(path):
+                os.remove(path)
+        _login_state.pop(uid, None)
+        await m.answer("Logged out ✅\nYour session files have been removed.")
